@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +10,9 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
 
     public KMBombInfo Bomb;
     public KMAudio Audio;
+    public KMColorblindMode Colorblind;
 
+    public TextMesh CBText;
     public TextMesh Label;
     public TextMesh[] Indicators;
     public Material[] ButtonMat;
@@ -18,6 +20,7 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
     public GameObject ButtonObject;
     public KMSelectable Button;
 
+    private Coroutine holder;
     private List<string> LabelList = new List<string>{ " ", "Abort", "Blank", "Blue", "Button", "Cyan", "Detonate", "Green", "Hold", "Literally\nBlank", "Magenta", "No Label", "Nothing", "Press", "Red", "Yellow" };
     int LabelIx = -1;
     string LabelText = "";
@@ -43,6 +46,8 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
     int rounds = 10;
     int RNG = -1;
     bool Gucci = false;
+    bool buttonHeld = false;
+    bool colorblindActive = false;
 
     //Logging
     static int moduleIdCounter = 1;
@@ -51,9 +56,12 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
 
     void Awake () {
         moduleId = moduleIdCounter++;
-
+        if (Colorblind.ColorblindModeActive)
+            colorblindActive = true;
+        Debug.LogFormat("[Needlessly Complicated Button #{0}] Colorblind Mode: {1}", moduleId, colorblindActive);
         Button.OnInteract += delegate () { buttonPress(); return false; };
         Button.OnInteractEnded += delegate () { buttonRelease(); };
+        GetComponent<KMBombModule>().OnActivate += ShowDisplays;
     }
 
     void Start () {
@@ -66,9 +74,9 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
         IndA = UnityEngine.Random.Range(0, 1000);
         IndB = UnityEngine.Random.Range(0, 1000);
         IndC = UnityEngine.Random.Range(0, 1000);
-        if (IndA < 10) { Indicators[0].text = "00" + IndA.ToString(); } else if (IndA < 100) { Indicators[0].text = "0" + IndA.ToString(); } else { Indicators[0].text = IndA.ToString(); }
-        if (IndB < 10) { Indicators[1].text = "00" + IndB.ToString(); } else if (IndB < 100) { Indicators[1].text = "0" + IndB.ToString(); } else { Indicators[1].text = IndB.ToString(); }
-        if (IndC < 10) { Indicators[2].text = "00" + IndC.ToString(); } else if (IndC < 100) { Indicators[2].text = "0" + IndC.ToString(); } else { Indicators[2].text = IndC.ToString(); }
+        Indicators[0].text = "";
+        Indicators[1].text = "";
+        Indicators[2].text = "";
         Debug.LogFormat("[Needlessly Complicated Button #{0}] The three indicators: {1}, {2}, {3}", moduleId, IndA, IndB, IndC);
 
         if (Bomb.GetBatteryCount() > Bomb.GetPortCount()) {
@@ -114,6 +122,8 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
 
         ButtonColor = UnityEngine.Random.Range(0, 8);
         ButtonObject.GetComponent<MeshRenderer>().material = ButtonMat[ButtonColor];
+        if (colorblindActive)
+            CBText.text = ColorNames[ButtonColor];
         Label.color = LabelColor[ButtonColor];
         Debug.LogFormat("[Needlessly Complicated Button #{0}] Button color: {1}", moduleId, ColorNames[ButtonColor]);
 
@@ -241,21 +251,23 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
     }
 
     void buttonPress () {
-        GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.BigButtonPress, transform);
+        GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.BigButtonPress, Button.transform);
         GetComponent<KMSelectable>().AddInteractionPunch();
         if (!moduleSolved) {
+            buttonHeld = true;
             HELD = Bomb.GetTime();
             if (diagramBchar == '?' && (int)Math.Floor(HELD) % 10 == finalOutput) {
                 rounds = 10;
-                StartCoroutine(UntilSatisfied());
+                holder = StartCoroutine(UntilSatisfied());
             }
         }
     }
 
     void buttonRelease () {
-        GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.BigButtonRelease, transform);
+        GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.BigButtonRelease, Button.transform);
         GetComponent<KMSelectable>().AddInteractionPunch();
-        if (!moduleSolved) {
+        if (!moduleSolved && buttonHeld) {
+            buttonHeld = false;
             RELEASED = Bomb.GetTime();
             if ((int)Math.Floor(HELD) % 10 == finalOutput) {
                 switch (diagramBchar) {
@@ -268,6 +280,7 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
                     case 'G': if ((int)Math.Floor(RELEASED) % 10 == 3) { Gucci = true; } else { Gucci = false; }; break;
                     case 'H': if ((int)Math.Floor(RELEASED) % 10 == 5) { Gucci = true; } else { Gucci = false; }; break;
                     case 'J': if ((int)Math.Floor(RELEASED) % 10 == 8) { Gucci = true; } else { Gucci = false; }; break;
+                    case '?': if (!moduleSolved) { StopCoroutine(holder); Gucci = false; } break;
                     default: Debug.Log("FUCK!"); break;
                 }
                 if (Gucci) {
@@ -275,7 +288,10 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
                     GetComponent<KMBombModule>().HandlePass();
                     moduleSolved = true;
                 } else {
-                    Debug.LogFormat("[Needlessly Complicated Button #{0}] You released at the wrong time, Strike!", moduleId);
+                    if (diagramBchar == '?')
+                        Debug.LogFormat("[Needlessly Complicated Button #{0}] You released when you didn't need to, Strike!", moduleId);
+                    else
+                        Debug.LogFormat("[Needlessly Complicated Button #{0}] You released at the wrong time, Strike!", moduleId);
                     GetComponent<KMBombModule>().HandleStrike();
                 }
             } else {
@@ -283,6 +299,13 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
                 GetComponent<KMBombModule>().HandleStrike();
             }
         }
+    }
+
+    void ShowDisplays()
+    {
+        if (IndA < 10) { Indicators[0].text = "00" + IndA.ToString(); } else if (IndA < 100) { Indicators[0].text = "0" + IndA.ToString(); } else { Indicators[0].text = IndA.ToString(); }
+        if (IndB < 10) { Indicators[1].text = "00" + IndB.ToString(); } else if (IndB < 100) { Indicators[1].text = "0" + IndB.ToString(); } else { Indicators[1].text = IndB.ToString(); }
+        if (IndC < 10) { Indicators[2].text = "00" + IndC.ToString(); } else if (IndC < 100) { Indicators[2].text = "0" + IndC.ToString(); } else { Indicators[2].text = IndC.ToString(); }
     }
 
     IEnumerator UntilSatisfied () {
@@ -294,7 +317,7 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
             moduleSolved = true;
         } else {
             rounds -= 1;
-            StartCoroutine(UntilSatisfied());
+            holder = StartCoroutine(UntilSatisfied());
         }
     }
 
@@ -313,4 +336,232 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
         return true;
     }
 
+    //twitch plays
+    bool TwitchZenMode = false;
+
+    #pragma warning disable 414
+    private readonly string TwitchHelpMessage = @"!{0} hold on # (for #₂) [Holds the button when the last digit of the timer is '#' (optionally for a duration of '#₂' seconds then release)] | !{0} release at # [Releases the button when the last digit of the timer is '#'] | !{0} colorblind [Toggles colorblind mode]";
+    #pragma warning restore 414
+    IEnumerator ProcessTwitchCommand(string command)
+    {
+        if (Regex.IsMatch(command, @"^\s*colorblind\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        {
+            yield return null;
+            if (colorblindActive)
+            {
+                colorblindActive = false;
+                CBText.text = "";
+            }
+            else
+            {
+                colorblindActive = true;
+                CBText.text = ColorNames[ButtonColor];
+            }
+            yield break;
+        }
+        string[] parameters = command.Split(' ');
+        if (Regex.IsMatch(parameters[0], @"^\s*hold\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        {
+            yield return null;
+            if (buttonHeld)
+            {
+                yield return "sendtochaterror The button cannot be held if it is already being held!";
+            }
+            else if (parameters.Length == 1 || parameters.Length == 2 || parameters.Length == 4 || parameters.Length > 5)
+            {
+                yield return "sendtochaterror Incorrect hold command format! Expected either '!{1} hold on #' or '!{1} hold on # for #₂'!";
+            }
+            else if (parameters.Length == 3)
+            {
+                if (!parameters[1].EqualsIgnoreCase("on"))
+                {
+                    yield return "sendtochaterror Incorrect hold command format! Expected '!{1} hold on #' but 'on' was not present!";
+                    yield break;
+                }
+                int temp = 0;
+                if (!int.TryParse(parameters[2], out temp))
+                {
+                    yield return "sendtochaterror Incorrect hold command format! Expected '!{1} hold on #' but '#' is not a valid digit between 0-9!";
+                    yield break;
+                }
+                if (temp < 0 || temp > 9)
+                {
+                    yield return "sendtochaterror Incorrect hold command format! Expected '!{1} hold on #' but '#' is not a valid digit between 0-9!";
+                    yield break;
+                }
+                while ((int)Bomb.GetTime() % 10 != temp) { yield return "trycancel Halted waiting to hold the button due to a request to cancel!"; yield return new WaitForSeconds(0.1f); }
+                Button.OnInteract();
+                if (diagramBchar == '?' && (int)Math.Floor(HELD) % 10 == finalOutput)
+                {
+                    yield return "solve";
+                }
+            }
+            else if (parameters.Length == 5)
+            {
+                if (!parameters[1].EqualsIgnoreCase("on"))
+                {
+                    yield return "sendtochaterror Incorrect hold command format! Expected '!{1} hold on # for #₂' but 'on' was not present!";
+                    yield break;
+                }
+                if (!parameters[3].EqualsIgnoreCase("for"))
+                {
+                    yield return "sendtochaterror Incorrect hold command format! Expected '!{1} hold on # for #₂' but 'for' was not present!";
+                    yield break;
+                }
+                int temp = 0;
+                if (!int.TryParse(parameters[2], out temp))
+                {
+                    yield return "sendtochaterror Incorrect hold command format! Expected '!{1} hold on # for #₂' but '#' is not a valid digit between 0-9!";
+                    yield break;
+                }
+                if (temp < 0 || temp > 9)
+                {
+                    yield return "sendtochaterror Incorrect hold command format! Expected '!{1} hold on # for #₂' but '#' is not a valid digit between 0-9!";
+                    yield break;
+                }
+                int temp2 = 0;
+                if (!int.TryParse(parameters[4], out temp2))
+                {
+                    yield return "sendtochaterror Incorrect hold command format! Expected '!{1} hold on # for #₂' but '#₂' is not a valid number between 0-20!";
+                    yield break;
+                }
+                if (temp2 < 0 || temp2 > 20)
+                {
+                    yield return "sendtochaterror Incorrect hold command format! Expected '!{1} hold on # for #₂' but '#₂' is not a valid number between 0-20!";
+                    yield break;
+                }
+                while ((int)Bomb.GetTime() % 10 != temp) { yield return "trycancel Halted waiting to hold the button due to a request to cancel!"; yield return new WaitForSeconds(0.1f); }
+                Button.OnInteract();
+                int timer = (int)Bomb.GetTime();
+                if (TwitchZenMode)
+                    timer += temp2;
+                else
+                    timer -= temp2;
+                while ((int)Bomb.GetTime() != timer) { yield return new WaitForSeconds(0.1f); }
+                Button.OnInteractEnded();
+            }
+            yield break;
+        }
+        if (Regex.IsMatch(parameters[0], @"^\s*release\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        {
+            yield return null;
+            if (!buttonHeld)
+            {
+                yield return "sendtochaterror The button must be held before it can be released!";
+            }
+            else if (parameters.Length == 1 || parameters.Length == 2 || parameters.Length > 3)
+            {
+                yield return "sendtochaterror Incorrect release command format! Expected '!{1} release at #'!";
+            }
+            else if (parameters.Length == 3)
+            {
+                if (!parameters[1].EqualsIgnoreCase("at"))
+                {
+                    yield return "sendtochaterror Incorrect release command format! Expected '!{1} release at #' but 'at' was not present!";
+                    yield break;
+                }
+                int temp = 0;
+                if (!int.TryParse(parameters[2], out temp))
+                {
+                    yield return "sendtochaterror Incorrect release command format! Expected '!{1} release at #' but '#' is not a valid digit between 0-9!";
+                    yield break;
+                }
+                if (temp < 0 || temp > 9)
+                {
+                    yield return "sendtochaterror Incorrect release command format! Expected '!{1} release at #' but '#' is not a valid digit between 0-9!";
+                    yield break;
+                }
+                while ((int)Bomb.GetTime() % 10 != temp) { yield return "trycancel Halted waiting to release the button due to a request to cancel!"; yield return new WaitForSeconds(0.1f); }
+                Button.OnInteractEnded();
+            }
+            yield break;
+        }
+    }
+
+    IEnumerator TwitchHandleForcedSolve()
+    {
+        if (!buttonHeld)
+        {
+            while ((int)Bomb.GetTime() % 10 != finalOutput) { yield return true; yield return new WaitForSeconds(0.1f); }
+            Button.OnInteract();
+            yield return new WaitForSeconds(0.1f);
+        }
+        if (diagramBchar == '?')
+        {
+            while (!moduleSolved) { yield return true; yield return new WaitForSeconds(0.1f); }
+        }
+        else if (diagramBchar == 'I')
+        {
+            Button.OnInteractEnded();
+            yield return new WaitForSeconds(0.1f);
+        }
+        else if (diagramBchar == 'A')
+        {
+            int timer = (int)Bomb.GetTime();
+            if (TwitchZenMode)
+                timer += 5;
+            else
+                timer -= 5;
+            while ((int)Bomb.GetTime() != timer) { yield return new WaitForSeconds(0.1f); }
+            Button.OnInteractEnded();
+            yield return new WaitForSeconds(0.1f);
+        }
+        else if (diagramBchar == 'B')
+        {
+            int timer = (int)Bomb.GetTime();
+            if (TwitchZenMode)
+                timer += 10;
+            else
+                timer -= 10;
+            while ((int)Bomb.GetTime() != timer) { yield return new WaitForSeconds(0.1f); }
+            Button.OnInteractEnded();
+            yield return new WaitForSeconds(0.1f);
+        }
+        else if (diagramBchar == 'C')
+        {
+            int timer = (int)Bomb.GetTime();
+            if (TwitchZenMode)
+                timer += 15;
+            else
+                timer -= 15;
+            while ((int)Bomb.GetTime() != timer) { yield return new WaitForSeconds(0.1f); }
+            Button.OnInteractEnded();
+            yield return new WaitForSeconds(0.1f);
+        }
+        else if (diagramBchar == 'D')
+        {
+            int timer = (int)Bomb.GetTime();
+            if (TwitchZenMode)
+                timer += 20;
+            else
+                timer -= 20;
+            while ((int)Bomb.GetTime() != timer) { yield return new WaitForSeconds(0.1f); }
+            Button.OnInteractEnded();
+            yield return new WaitForSeconds(0.1f);
+        }
+        else if (diagramBchar == 'F')
+        {
+            while ((int)Bomb.GetTime() % 10 != 1) { yield return true; yield return new WaitForSeconds(0.1f); }
+            Button.OnInteractEnded();
+            yield return new WaitForSeconds(0.1f);
+        }
+        else if (diagramBchar == 'G')
+        {
+            while ((int)Bomb.GetTime() % 10 != 3) { yield return true; yield return new WaitForSeconds(0.1f); }
+            Button.OnInteractEnded();
+            yield return new WaitForSeconds(0.1f);
+        }
+        else if (diagramBchar == 'H')
+        {
+            while ((int)Bomb.GetTime() % 10 != 5) { yield return true; yield return new WaitForSeconds(0.1f); }
+            Button.OnInteractEnded();
+            yield return new WaitForSeconds(0.1f);
+        }
+        else if (diagramBchar == 'J')
+        {
+            while ((int)Bomb.GetTime() % 10 != 8) { yield return true; yield return new WaitForSeconds(0.1f); }
+            Button.OnInteractEnded();
+            yield return new WaitForSeconds(0.1f);
+        }
+    }
 }
