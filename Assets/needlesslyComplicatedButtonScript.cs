@@ -83,7 +83,7 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
             TableRule = 0;
         } else if (Bomb.GetIndicators().Any(x => new[] { LabelText.ToUpper()[0], LabelText.ToUpper()[LabelText.Length - 1] }.Any(y => x.Contains(y)))) {
             TableRule = 1;
-        } else if (Bomb.GetSerialNumberLetters().Any( x => LabelText.Contains(x))) {
+        } else if (Bomb.GetSerialNumberLetters().Any( x => LabelText.ToUpper().Contains(x))) {
             TableRule = 2;
         } else {
             TableRule = 3;
