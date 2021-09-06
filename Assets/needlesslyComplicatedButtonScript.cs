@@ -41,8 +41,8 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
     string Venn = "AHIFB?GJDABIJCF?";
     char diagramBchar = ' ';
     private List<string> ColorNames = new List<string>{ "Black", "Blue", "Green", "Cyan", "Red", "Magenta", "Yellow", "White" };
-    float HELD = -1;
-    float RELEASED = -1;
+    int HELD = -1;
+    int RELEASED = -1;
     int rounds = 10;
     int RNG = -1;
     bool Gucci = false;
@@ -255,8 +255,8 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
         GetComponent<KMSelectable>().AddInteractionPunch();
         if (!moduleSolved) {
             buttonHeld = true;
-            HELD = Bomb.GetTime();
-            if (diagramBchar == '?' && (int)Math.Floor(HELD) % 10 == finalOutput) {
+            HELD = (int)Bomb.GetTime();
+            if (diagramBchar == '?' && HELD % 10 == finalOutput) {
                 rounds = 10;
                 holder = StartCoroutine(UntilSatisfied());
             }
@@ -268,18 +268,18 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
         GetComponent<KMSelectable>().AddInteractionPunch();
         if (!moduleSolved && buttonHeld) {
             buttonHeld = false;
-            RELEASED = Bomb.GetTime();
-            if ((int)Math.Floor(HELD) % 10 == finalOutput) {
+            RELEASED = (int)Bomb.GetTime();
+            if (HELD % 10 == finalOutput) {
                 switch (diagramBchar) {
-                    case 'I': if ((int)Math.Round(Math.Abs(HELD - RELEASED)) == 0) { Gucci = true; } else { Gucci = false; }; break;
-                    case 'A': if ((int)Math.Round(Math.Abs(HELD - RELEASED)) == 5) { Gucci = true; } else { Gucci = false; }; break;
-                    case 'B': if ((int)Math.Round(Math.Abs(HELD - RELEASED)) == 10) { Gucci = true; } else { Gucci = false; }; break;
-                    case 'C': if ((int)Math.Round(Math.Abs(HELD - RELEASED)) == 15) { Gucci = true; } else { Gucci = false; }; break;
-                    case 'D': if ((int)Math.Round(Math.Abs(HELD - RELEASED)) == 20) { Gucci = true; } else { Gucci = false; }; break;
-                    case 'F': if ((int)Math.Floor(RELEASED) % 10 == 1) { Gucci = true; } else { Gucci = false; }; break;
-                    case 'G': if ((int)Math.Floor(RELEASED) % 10 == 3) { Gucci = true; } else { Gucci = false; }; break;
-                    case 'H': if ((int)Math.Floor(RELEASED) % 10 == 5) { Gucci = true; } else { Gucci = false; }; break;
-                    case 'J': if ((int)Math.Floor(RELEASED) % 10 == 8) { Gucci = true; } else { Gucci = false; }; break;
+                    case 'I': if (Math.Abs(HELD - RELEASED) == 0) { Gucci = true; } else { Gucci = false; }; break;
+                    case 'A': if (Math.Abs(HELD - RELEASED) == 5) { Gucci = true; } else { Gucci = false; }; break;
+                    case 'B': if (Math.Abs(HELD - RELEASED) == 10) { Gucci = true; } else { Gucci = false; }; break;
+                    case 'C': if (Math.Abs(HELD - RELEASED) == 15) { Gucci = true; } else { Gucci = false; }; break;
+                    case 'D': if (Math.Abs(HELD - RELEASED) == 20) { Gucci = true; } else { Gucci = false; }; break;
+                    case 'F': if (RELEASED % 10 == 1) { Gucci = true; } else { Gucci = false; }; break;
+                    case 'G': if (RELEASED % 10 == 3) { Gucci = true; } else { Gucci = false; }; break;
+                    case 'H': if (RELEASED % 10 == 5) { Gucci = true; } else { Gucci = false; }; break;
+                    case 'J': if (RELEASED % 10 == 8) { Gucci = true; } else { Gucci = false; }; break;
                     case '?': if (!moduleSolved) { StopCoroutine(holder); Gucci = false; } break;
                     default: Debug.Log("FUCK!"); break;
                 }
@@ -389,9 +389,9 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
                     yield return "sendtochaterror Incorrect hold command format! Expected '!{1} hold on #' but '#' is not a valid digit between 0-9!";
                     yield break;
                 }
-                while ((int)Bomb.GetTime() % 10 != temp) { yield return "trycancel Halted waiting to hold the button due to a request to cancel!"; yield return new WaitForSeconds(0.1f); }
+                while ((int)Bomb.GetTime() % 10 != temp) { yield return "trycancel Halted waiting to hold the button due to a request to cancel!"; yield return null; }
                 Button.OnInteract();
-                if (diagramBchar == '?' && (int)Math.Floor(HELD) % 10 == finalOutput)
+                if (diagramBchar == '?' && HELD % 10 == finalOutput)
                 {
                     yield return "solve";
                 }
@@ -430,14 +430,14 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
                     yield return "sendtochaterror Incorrect hold command format! Expected '!{1} hold on # for #₂' but '#₂' is not a valid number between 0-20!";
                     yield break;
                 }
-                while ((int)Bomb.GetTime() % 10 != temp) { yield return "trycancel Halted waiting to hold the button due to a request to cancel!"; yield return new WaitForSeconds(0.1f); }
+                while ((int)Bomb.GetTime() % 10 != temp) { yield return "trycancel Halted waiting to hold the button due to a request to cancel!"; yield return null; }
                 Button.OnInteract();
                 int timer = (int)Bomb.GetTime();
                 if (TwitchZenMode)
                     timer += temp2;
                 else
                     timer -= temp2;
-                while ((int)Bomb.GetTime() != timer) { yield return new WaitForSeconds(0.1f); }
+                while ((int)Bomb.GetTime() != timer) { yield return null; }
                 Button.OnInteractEnded();
             }
             yield break;
@@ -471,7 +471,7 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
                     yield return "sendtochaterror Incorrect release command format! Expected '!{1} release at #' but '#' is not a valid digit between 0-9!";
                     yield break;
                 }
-                while ((int)Bomb.GetTime() % 10 != temp) { yield return "trycancel Halted waiting to release the button due to a request to cancel!"; yield return new WaitForSeconds(0.1f); }
+                while ((int)Bomb.GetTime() % 10 != temp) { yield return "trycancel Halted waiting to release the button due to a request to cancel!"; yield return null; }
                 Button.OnInteractEnded();
             }
             yield break;
@@ -482,13 +482,13 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
     {
         if (!buttonHeld)
         {
-            while ((int)Bomb.GetTime() % 10 != finalOutput) { yield return true; yield return new WaitForSeconds(0.1f); }
+            while ((int)Bomb.GetTime() % 10 != finalOutput) { yield return true; }
             Button.OnInteract();
             yield return new WaitForSeconds(0.1f);
         }
         if (diagramBchar == '?')
         {
-            while (!moduleSolved) { yield return true; yield return new WaitForSeconds(0.1f); }
+            while (!moduleSolved) { yield return true; }
         }
         else if (diagramBchar == 'I')
         {
@@ -502,7 +502,7 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
                 timer += 5;
             else
                 timer -= 5;
-            while ((int)Bomb.GetTime() != timer) { yield return new WaitForSeconds(0.1f); }
+            while ((int)Bomb.GetTime() != timer) { yield return null; }
             Button.OnInteractEnded();
             yield return new WaitForSeconds(0.1f);
         }
@@ -513,7 +513,7 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
                 timer += 10;
             else
                 timer -= 10;
-            while ((int)Bomb.GetTime() != timer) { yield return new WaitForSeconds(0.1f); }
+            while ((int)Bomb.GetTime() != timer) { yield return null; }
             Button.OnInteractEnded();
             yield return new WaitForSeconds(0.1f);
         }
@@ -524,7 +524,7 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
                 timer += 15;
             else
                 timer -= 15;
-            while ((int)Bomb.GetTime() != timer) { yield return new WaitForSeconds(0.1f); }
+            while ((int)Bomb.GetTime() != timer) { yield return null; }
             Button.OnInteractEnded();
             yield return new WaitForSeconds(0.1f);
         }
@@ -535,31 +535,31 @@ public class needlesslyComplicatedButtonScript : MonoBehaviour {
                 timer += 20;
             else
                 timer -= 20;
-            while ((int)Bomb.GetTime() != timer) { yield return new WaitForSeconds(0.1f); }
+            while ((int)Bomb.GetTime() != timer) { yield return null; }
             Button.OnInteractEnded();
             yield return new WaitForSeconds(0.1f);
         }
         else if (diagramBchar == 'F')
         {
-            while ((int)Bomb.GetTime() % 10 != 1) { yield return true; yield return new WaitForSeconds(0.1f); }
+            while ((int)Bomb.GetTime() % 10 != 1) { yield return true; }
             Button.OnInteractEnded();
             yield return new WaitForSeconds(0.1f);
         }
         else if (diagramBchar == 'G')
         {
-            while ((int)Bomb.GetTime() % 10 != 3) { yield return true; yield return new WaitForSeconds(0.1f); }
+            while ((int)Bomb.GetTime() % 10 != 3) { yield return true; }
             Button.OnInteractEnded();
             yield return new WaitForSeconds(0.1f);
         }
         else if (diagramBchar == 'H')
         {
-            while ((int)Bomb.GetTime() % 10 != 5) { yield return true; yield return new WaitForSeconds(0.1f); }
+            while ((int)Bomb.GetTime() % 10 != 5) { yield return true; }
             Button.OnInteractEnded();
             yield return new WaitForSeconds(0.1f);
         }
         else if (diagramBchar == 'J')
         {
-            while ((int)Bomb.GetTime() % 10 != 8) { yield return true; yield return new WaitForSeconds(0.1f); }
+            while ((int)Bomb.GetTime() % 10 != 8) { yield return true; }
             Button.OnInteractEnded();
             yield return new WaitForSeconds(0.1f);
         }
