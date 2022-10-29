@@ -204,7 +204,7 @@ GameObject:
   - component: {fileID: 114139553842080666}
   - component: {fileID: 114427433404397320}
   m_Layer: 0
-  m_Name: Template
+  m_Name: Needlessly Complicated Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
